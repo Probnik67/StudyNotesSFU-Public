@@ -1,0 +1,49 @@
+# Gradle / Android
+.gradle/
+**/build/
+.idea/
+*.iml
+local.properties
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+secrets.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Compiled applications
+*.apk
+*.aab
+
+# Archives / backups
+*.zip
+*.7z
+*.rar
+*_FULL_with_history*
+
+# Local application data
+*.db
+*.sqlite
+*.sqlite3
+
+# Personal / visual evidence
+visual-evidence/
+visual-reference/
+screenshots/
+screenshot/
+OVERNIGHT-REPORT.md
+
+# Local publication / audit output
+gitleaks-report.*
+secret-scan.*
+privacy-scan.*
+
+# OS
+Thumbs.db
+.DS_Store
