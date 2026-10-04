@@ -14,6 +14,7 @@ android {
         targetSdk = 35
         versionCode = 85
         versionName = "0.8.58"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
@@ -49,6 +50,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
 
 }
 val studyNotesStoreFile = System.getenv("STUDYNOTES_STORE_FILE")
