@@ -38,7 +38,11 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: ./gradlew --no-daemon connectedDebugAndroidTest
+          script: |
+            ./gradlew --no-daemon connectedDebugAndroidTest
+            mkdir -p nightly-output/screenshots
+            adb pull /sdcard/Download/nightly-first-frame.png nightly-output/screenshots/nightly-first-frame.png
+            test -s nightly-output/screenshots/nightly-first-frame.png
 
       - name: Collect test outputs
         if: always()

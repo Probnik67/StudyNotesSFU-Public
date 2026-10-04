@@ -25,7 +25,7 @@ class NightlySmokeTest {
             Thread.sleep(1600)
 
             val output = File(
-                InstrumentationRegistry.getInstrumentation().targetContext.cacheDir,
+                File("/sdcard/Download"),
                 "nightly-first-frame.png"
             )
             val uiAutomation = instrumentation.uiAutomation
