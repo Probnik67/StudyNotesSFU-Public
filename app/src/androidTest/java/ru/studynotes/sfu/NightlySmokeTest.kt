@@ -16,6 +16,9 @@ class NightlySmokeTest {
     fun launchAppAndCaptureFirstFrame() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
+        instrumentation.uiAutomation.executeShellCommand(
+            "pm grant ${context.packageName} android.permission.POST_NOTIFICATIONS"
+        ).close()
         val intent = Intent(context, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         }
