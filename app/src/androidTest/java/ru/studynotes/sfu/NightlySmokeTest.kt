@@ -2,6 +2,9 @@ package ru.studynotes.sfu
 
 import android.content.Intent
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
@@ -27,17 +30,24 @@ class NightlySmokeTest {
             instrumentation.waitForIdleSync()
             Thread.sleep(1600)
 
-            val output = File(
-                File("/sdcard/Download"),
-                "nightly-first-frame.png"
-            )
-            val uiAutomation = instrumentation.uiAutomation
-            val bitmap = uiAutomation.takeScreenshot()
-            assertTrue("Screenshot must have a non-zero size", bitmap.width > 0 && bitmap.height > 0)
-            output.outputStream().use { stream ->
-                assertTrue("Screenshot must be encoded as PNG", bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream))
-            }
-            assertTrue("Screenshot file must exist", output.isFile && output.length() > 0)
+            capture(instrumentation, "nightly-first-frame.png")
+            onView(withContentDescription("Заметки")).perform(click())
+            instrumentation.waitForIdleSync()
+            capture(instrumentation, "nightly-notes.png")
+            onView(withContentDescription("Домашние задания")).perform(click())
+            instrumentation.waitForIdleSync()
+            capture(instrumentation, "nightly-homework.png")
         }
+    }
+
+    private fun capture(instrumentation: android.app.Instrumentation, filename: String) {
+        Thread.sleep(700)
+        val output = File(File("/sdcard/Download"), filename)
+        val bitmap = instrumentation.uiAutomation.takeScreenshot()
+        assertTrue("Screenshot must have a non-zero size", bitmap.width > 0 && bitmap.height > 0)
+        output.outputStream().use { stream ->
+            assertTrue("Screenshot must be encoded as PNG", bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream))
+        }
+        assertTrue("Screenshot file must exist", output.isFile && output.length() > 0)
     }
 }
