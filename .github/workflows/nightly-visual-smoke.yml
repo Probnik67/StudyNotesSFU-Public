@@ -41,8 +41,10 @@ jobs:
           script: |
             ./gradlew --no-daemon connectedDebugAndroidTest
             mkdir -p nightly-output/screenshots
-            adb pull /sdcard/Download/nightly-first-frame.png nightly-output/screenshots/nightly-first-frame.png
-            test -s nightly-output/screenshots/nightly-first-frame.png
+            for screen in first-frame notes homework; do
+              adb pull "/sdcard/Download/nightly-${screen}.png" "nightly-output/screenshots/nightly-${screen}.png"
+              test -s "nightly-output/screenshots/nightly-${screen}.png"
+            done
 
       - name: Collect test outputs
         if: always()
