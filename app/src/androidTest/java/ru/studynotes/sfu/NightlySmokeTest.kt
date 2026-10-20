@@ -1,10 +1,9 @@
 package ru.studynotes.sfu
 
-import android.content.Intent
-import androidx.test.core.app.ActivityScenario
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.matcher.ViewMatchers.withContentDescription
+import androidx.compose.ui.test.assertExists
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
@@ -15,6 +14,9 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class NightlySmokeTest {
 
+    @get:org.junit.Rule
+    val composeRule = createAndroidComposeRule<MainActivity>()
+
     @Test
     fun launchAppAndCaptureFirstFrame() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -22,22 +24,15 @@ class NightlySmokeTest {
         instrumentation.uiAutomation.executeShellCommand(
             "pm grant ${context.packageName} android.permission.POST_NOTIFICATIONS"
         ).close()
-        val intent = Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        }
-
-        ActivityScenario.launch<MainActivity>(intent).use {
-            instrumentation.waitForIdleSync()
-            Thread.sleep(1600)
-
-            capture(instrumentation, "nightly-first-frame.png")
-            onView(withContentDescription("Заметки")).perform(click())
-            instrumentation.waitForIdleSync()
-            capture(instrumentation, "nightly-notes.png")
-            onView(withContentDescription("Домашние задания")).perform(click())
-            instrumentation.waitForIdleSync()
-            capture(instrumentation, "nightly-homework.png")
-        }
+        composeRule.waitForIdle()
+        Thread.sleep(1600)
+        capture(instrumentation, "nightly-first-frame.png")
+        composeRule.onNodeWithContentDescription("Заметки").assertExists().performClick()
+        composeRule.waitForIdle()
+        capture(instrumentation, "nightly-notes.png")
+        composeRule.onNodeWithContentDescription("Домашние задания").assertExists().performClick()
+        composeRule.waitForIdle()
+        capture(instrumentation, "nightly-homework.png")
     }
 
     private fun capture(instrumentation: android.app.Instrumentation, filename: String) {
