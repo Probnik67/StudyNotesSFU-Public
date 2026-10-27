@@ -33,8 +33,8 @@ class NightlySmokeTest {
         }
         ActivityScenario.launch<MainActivity>(intent).use {
             composeRule.waitForIdle()
-            waitForLabel("Заметки")
             capture(instrumentation, "nightly-first-frame.png")
+            waitForLabel("Заметки")
             tapLabel("Заметки")
             composeRule.waitForIdle()
             capture(instrumentation, "nightly-notes.png")
@@ -51,8 +51,12 @@ class NightlySmokeTest {
                 composeRule.onAllNodesWithText(label, useUnmergedTree = true)
                     .fetchSemanticsNodes().isNotEmpty()
             }
-        } catch (error: AssertionError) {
-            composeRule.onRoot(useUnmergedTree = true).printToLog("NightlySemantics")
+        } catch (error: Exception) {
+            try {
+                composeRule.onRoot(useUnmergedTree = true).printToLog("NightlySemantics")
+            } catch (diagnosticError: Exception) {
+                android.util.Log.e("NightlySemantics", "Unable to dump Compose semantics", diagnosticError)
+            }
             throw error
         }
     }
