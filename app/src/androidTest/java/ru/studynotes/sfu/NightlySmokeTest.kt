@@ -1,6 +1,8 @@
 package ru.studynotes.sfu
 
-import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import android.content.Intent
@@ -30,15 +32,33 @@ class NightlySmokeTest {
         }
         ActivityScenario.launch<MainActivity>(intent).use {
             composeRule.waitForIdle()
-            Thread.sleep(1600)
+            waitForLabel("Заметки")
             capture(instrumentation, "nightly-first-frame.png")
-            composeRule.onNodeWithContentDescription("Заметки").assertExists().performClick()
+            tapLabel("Заметки")
             composeRule.waitForIdle()
             capture(instrumentation, "nightly-notes.png")
-            composeRule.onNodeWithContentDescription("Домашние задания").assertExists().performClick()
+            waitForLabel("ДЗ")
+            tapLabel("ДЗ")
             composeRule.waitForIdle()
             capture(instrumentation, "nightly-homework.png")
         }
+    }
+
+    private fun waitForLabel(label: String) {
+        try {
+            composeRule.waitUntil(timeoutMillis = 15_000) {
+                composeRule.onAllNodesWithText(label, useUnmergedTree = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (error: AssertionError) {
+            composeRule.onRoot(useUnmergedTree = true).printToLog("NightlySemantics")
+            throw error
+        }
+    }
+
+    private fun tapLabel(label: String) {
+        composeRule.onAllNodesWithText(label, useUnmergedTree = true)
+            .onFirst().performClick()
     }
 
     private fun capture(instrumentation: android.app.Instrumentation, filename: String) {
