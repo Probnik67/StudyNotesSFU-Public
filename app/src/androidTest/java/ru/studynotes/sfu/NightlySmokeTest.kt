@@ -30,6 +30,7 @@ class NightlySmokeTest {
         ).close()
         val intent = Intent(context, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            putExtra("skipSplashForSmokeTest", true)
         }
         ActivityScenario.launch<MainActivity>(intent).use {
             composeRule.waitForIdle()

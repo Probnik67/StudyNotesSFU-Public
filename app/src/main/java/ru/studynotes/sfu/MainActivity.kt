@@ -47,8 +47,11 @@ class MainActivity : ComponentActivity() {
         }
 
         val requestedLessonId = intent?.getStringExtra("lessonId")
+        // Instrumentation smoke tests verify navigation, not the timed splash animation.
+        val skipSplashForSmokeTest = intent?.getBooleanExtra("skipSplashForSmokeTest", false) == true &&
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         setContent {
-            var showSplash by remember { mutableStateOf(true) }
+            var showSplash by remember { mutableStateOf(!skipSplashForSmokeTest) }
             LaunchedEffect(Unit) {
                 delay(950)
                 showSplash = false
