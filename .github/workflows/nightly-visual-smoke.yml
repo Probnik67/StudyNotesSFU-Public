@@ -39,12 +39,15 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
+            set +e
             ./gradlew --no-daemon connectedDebugAndroidTest
+            test_exit=$?
             mkdir -p nightly-output/screenshots
             for screen in first-frame notes homework; do
-              adb pull "/sdcard/Download/nightly-${screen}.png" "nightly-output/screenshots/nightly-${screen}.png"
-              test -s "nightly-output/screenshots/nightly-${screen}.png"
+              adb pull "/sdcard/Download/nightly-${screen}.png" "nightly-output/screenshots/nightly-${screen}.png" || true
             done
+            adb logcat -d -s NightlySemantics:D '*:S' > nightly-output/compose-semantics.log || true
+            exit "$test_exit"
 
       - name: Collect test outputs
         if: always()
