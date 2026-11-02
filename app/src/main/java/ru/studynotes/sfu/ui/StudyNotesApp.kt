@@ -388,6 +388,7 @@ fun StudyNotesApp(repository: AppRepository, initiallyOpenLessonId: String?) {
                     onAddNote = { screen = Screen.AddNoteSubjects },
                     onArchive = { screen = Screen.Archive },
                     onHomework = { screen = Screen.Homework },
+                    onSchedule = { screen = Screen.Schedule },
                     onStatistics = { screen = Screen.Statistics },
                     listState = homeListState
                 )
