@@ -356,6 +356,7 @@ fun StudyNotesApp(repository: AppRepository, initiallyOpenLessonId: String?) {
                     onAddNote = { screen = Screen.AddNoteSubjects },
                     onArchive = { screen = Screen.Archive },
                     onHomework = { screen = Screen.Homework },
+                    onSchedule = { screen = Screen.Schedule },
                     onStatistics = { screen = Screen.Statistics },
                     listState = homeListState
                 )
@@ -466,6 +467,7 @@ private fun HomeScreen(
     onAddNote: () -> Unit,
     onArchive: () -> Unit,
     onHomework: () -> Unit,
+    onSchedule: () -> Unit,
     onStatistics: () -> Unit,
     listState: LazyListState
 ) {
@@ -487,6 +489,16 @@ private fun HomeScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = (if (appDarkThemeStateV0849.value) MaterialTheme.colorScheme.surface else Color.White))
+            )
+        },
+        bottomBar = {
+            AppBottomNavigation(
+                selected = null,
+                onSchedule = onSchedule,
+                onHomework = onHomework,
+                onNotes = onArchive,
+                onArchive = onArchive,
+                onSettings = onSettings
             )
         }
     ) { pad ->
