@@ -474,6 +474,7 @@ private fun HomeScreen(
     var selectedDate by remember { mutableStateOf(today) }
     var weekStart by remember { mutableStateOf(today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))) }
     val lessons = repository.lessonsForDate(repository.selectedSubgroup, selectedDate)
+    var openedLesson by remember { mutableStateOf<Lesson?>(null) }
     val ru = Locale("ru")
     val dayLabel = if (selectedDate == today) "Пары сегодня" else "Пары на ${selectedDate.format(DateTimeFormatter.ofPattern("dd.MM.yy"))}"
 
@@ -576,7 +577,7 @@ private fun HomeScreen(
                 }
             } else {
                 items(lessons, key = { it.id }) { lesson ->
-                    ScheduleLessonCard(lesson)
+                    ScheduleLessonCard(lesson, onClick = { openedLesson = lesson })
                 }
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF2EDFF))) {
@@ -590,6 +591,15 @@ private fun HomeScreen(
             }
         }
     }
+    openedLesson?.let { lesson ->
+        HomeworkForLessonDialog(
+            repository = repository,
+            lesson = lesson,
+            onDismiss = { openedLesson = null },
+            onChanged = onRefresh
+        )
+    }
+
 }
 
 @Composable
@@ -617,8 +627,9 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun ScheduleLessonCard(lesson: Lesson) {
+private fun ScheduleLessonCard(lesson: Lesson, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         colors = CardDefaults.cardColors(containerColor = (if (appDarkThemeStateV0849.value) MaterialTheme.colorScheme.surface else Color.White)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
