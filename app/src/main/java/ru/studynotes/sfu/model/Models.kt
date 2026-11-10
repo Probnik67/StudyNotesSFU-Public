@@ -60,5 +60,6 @@ data class Homework(
     val dueDate: LocalDate,
     val text: String,
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val completed: Boolean = false
+    val completed: Boolean = false,
+    val important: Boolean = false
 )
