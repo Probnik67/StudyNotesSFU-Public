@@ -1139,6 +1139,7 @@ private fun HomeworkForLessonDialog(
     val savedDraftDate = repository.homeworkDraftDueDate(lesson.id)
     var mode by remember(lesson.id) { mutableStateOf(if (savedDraftText.isNotBlank() || savedDraftDate != null) "add" else if (repository.homeworkForLesson(lesson.id).isNotEmpty()) "list" else "choice") }
     var editingHomeworkId by remember(lesson.id) { mutableStateOf<String?>(null) }
+    var important by remember(lesson.id) { mutableStateOf(false) }
     var text by remember(lesson.id) { mutableStateOf(savedDraftText) }
     var dueDate by remember(lesson.id) { mutableStateOf(savedDraftDate) }
     var showCalendar by remember { mutableStateOf(false) }
@@ -1172,7 +1173,7 @@ private fun HomeworkForLessonDialog(
                         existing.forEach { h ->
                             Card(Modifier.fillMaxWidth()) {
                                 Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(h.text, fontWeight = FontWeight.SemiBold)
+                                    Text((if (h.important) "★ " else "") + h.text, fontWeight = FontWeight.SemiBold)
                                     Text("Срок: ${h.dueDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru")))}", fontSize = 12.sp)
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         TextButton(onClick = {
@@ -1183,6 +1184,7 @@ private fun HomeworkForLessonDialog(
                                             editingHomeworkId = h.id
                                             text = h.text
                                             dueDate = h.dueDate
+                                            important = h.important
                                             mode = "edit"
                                         }) { Text("Редактировать") }
                                     }
@@ -1193,7 +1195,7 @@ private fun HomeworkForLessonDialog(
                                 }
                             }
                         }
-                        Button(onClick = { mode = "add" }, Modifier.fillMaxWidth()) { Text("Добавить ещё ДЗ") }
+                        Button(onClick = { important = false; mode = "add" }, Modifier.fillMaxWidth()) { Text("Добавить ещё ДЗ") }
                     }
                     "add", "edit" -> {
                         Text(if (mode == "edit") "Редактирование задания" else "Что нужно сделать", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
@@ -1207,6 +1209,10 @@ private fun HomeworkForLessonDialog(
                             Icon(Icons.Default.Event, null)
                             Spacer(Modifier.width(6.dp))
                             Text(dueDate?.let { "Срок: ${it.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru")))}" } ?: "Добавить дату")
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = important, onCheckedChange = { important = it })
+                            Text("★ Важное задание")
                         }
                         if (suggestedDates.isNotEmpty()) {
                             Text("В календаре выделены будущие занятия по этому предмету.", fontSize = 12.sp)
@@ -1223,9 +1229,9 @@ private fun HomeworkForLessonDialog(
                     dueDate == null -> error = "Выбери крайний срок."
                     else -> {
                         if (mode == "edit" && editingHomeworkId != null) {
-                            repository.updateHomework(editingHomeworkId!!, text, dueDate!!)
+                            repository.updateHomework(editingHomeworkId!!, text, dueDate!!, important)
                         } else {
-                            repository.addHomework(lesson, text, dueDate!!)
+                            repository.addHomework(lesson, text, dueDate!!, important)
                             repository.clearHomeworkDraft(lesson.id)
                         }
                         onChanged()
@@ -1493,7 +1499,7 @@ private fun HomeworkScreen(
     refreshKey.hashCode()
     var editingHomework by remember { mutableStateOf<Homework?>(null) }
     val today = LocalDate.now()
-    val sorted = repository.homeworks.sortedWith(compareBy<Homework> { it.completed }.thenBy { it.dueDate }.thenBy { it.createdAt })
+    val sorted = repository.homeworks.sortedWith(compareBy<Homework> { it.completed }.thenByDescending { it.important }.thenBy { it.dueDate }.thenBy { it.createdAt })
     Scaffold(
         topBar = { TopAppBar(title = { Text("Домашнее задание", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Назад") } }) }
     ) { pad ->
@@ -1501,14 +1507,19 @@ private fun HomeworkScreen(
             if (sorted.isEmpty()) item { Text("Домашних заданий пока нет.") }
             items(sorted, key = { it.id }) { h ->
                 val days = ChronoUnit.DAYS.between(today, h.dueDate)
-                val urgency = when { h.completed -> "Выполнено"; days < 0 -> "Просрочено на ${-days} дн."; days == 0L -> "Срок сегодня"; days == 1L -> "Срок завтра"; else -> "Осталось $days дн." }
+                val urgency = when { h.completed -> "Выполнено"; days < 0 -> "Просрочено на ${-days} дн."; days == 0L -> "Срок сегодня"; days == 1L -> "Срок завтра"; days <= 2 -> "Срочно · $days дн."; days < 7 -> "Пора ускоряться · $days дн."; else -> "Время есть · $days дн." }
+                val urgencyColor = when { h.completed -> Color.Gray; days <= 2 -> Color(0xFFD32F2F); days < 7 -> Color(0xFFE6A000); else -> Color(0xFF2E7D32) }
+                val totalDays = ChronoUnit.DAYS.between(h.assignedDate, h.dueDate).coerceAtLeast(1)
+                val remainingFraction = (days.toFloat() / totalDays.toFloat()).coerceIn(0f, 1f)
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(h.subject, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text(urgency, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text((if (h.important) "★ " else "") + h.subject, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f)); Text(urgency, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = urgencyColor)
                         }
                         Text(h.text)
-                        Text("Крайний срок: ${h.dueDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale("ru")))}", fontSize = 12.sp)
+                        Text("Задано: ${h.assignedDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru")))}", fontSize = 12.sp)
+                        Text("Сдать до: ${h.dueDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru")))}", fontSize = 12.sp)
+                        LinearProgressIndicator(progress = { if (h.completed) 1f else remainingFraction }, modifier = Modifier.fillMaxWidth(), color = urgencyColor, trackColor = urgencyColor.copy(alpha = 0.15f))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = { repository.setHomeworkCompleted(h.id, !h.completed); onRefresh() }) { Icon(if (h.completed) Icons.Default.Undo else Icons.Default.CheckCircle, null); Spacer(Modifier.width(5.dp)); Text(if (h.completed) "Вернуть" else "Выполнено") }
                             TextButton(onClick = { editingHomework = h }) { Text("Редактировать") }
@@ -1533,6 +1544,7 @@ private fun HomeworkEditDialog(
 ) {
     var text by remember(homework.id) { mutableStateOf(homework.text) }
     var dueDate by remember(homework.id) { mutableStateOf(homework.dueDate) }
+    var important by remember(homework.id) { mutableStateOf(homework.important) }
     var showCalendar by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val lesson = repository.lessonByIdAnySubgroup(homework.lessonId)
@@ -1555,12 +1567,16 @@ private fun HomeworkEditDialog(
                     Spacer(Modifier.width(6.dp))
                     Text("Срок: ${dueDate.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru")))}")
                 }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = important, onCheckedChange = { important = it })
+                    Text("★ Важное задание")
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
             }
         },
         confirmButton = { Button(onClick = {
             if (text.isBlank()) error = "Текст задания не может быть пустым."
-            else onSaved(text, dueDate)
+            else { repository.updateHomework(homework.id, text, dueDate, important); onSaved(text, dueDate) }
         }) { Text("Сохранить") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
     )
