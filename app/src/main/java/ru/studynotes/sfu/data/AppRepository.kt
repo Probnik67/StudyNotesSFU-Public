@@ -516,24 +516,25 @@ class AppRepository(private val context: Context) {
 
     fun hasNoNotes(lessonId: String): Boolean = lessonId in noNotesLessonIds
 
-    fun addHomework(lesson: Lesson, text: String, dueDate: LocalDate): Homework {
+    fun addHomework(lesson: Lesson, text: String, dueDate: LocalDate, important: Boolean = false): Homework {
         noHomeworkLessonIds.remove(lesson.id)
         val homework = Homework(
             lessonId = lesson.id,
             subject = lesson.subject,
             assignedDate = lesson.date,
             dueDate = dueDate,
-            text = text.trim()
+            text = text.trim(),
+            important = important
         )
         homeworks.add(homework)
         save()
         return homework
     }
 
-    fun updateHomework(id: String, text: String, dueDate: LocalDate) {
+    fun updateHomework(id: String, text: String, dueDate: LocalDate, important: Boolean? = null) {
         val index = homeworks.indexOfFirst { it.id == id }
         if (index >= 0) {
-            homeworks[index] = homeworks[index].copy(text = text.trim(), dueDate = dueDate)
+            homeworks[index] = homeworks[index].copy(text = text.trim(), dueDate = dueDate, important = important ?: homeworks[index].important)
             save()
         }
     }
@@ -808,7 +809,7 @@ class AppRepository(private val context: Context) {
         val homeworkJson = JSONArray()
         homeworks.forEach { h -> homeworkJson.put(JSONObject().apply {
             put("id", h.id); put("lessonId", h.lessonId); put("subject", h.subject); put("assignedDate", h.assignedDate.toString())
-            put("dueDate", h.dueDate.toString()); put("text", h.text); put("createdAt", h.createdAt.toString()); put("completed", h.completed)
+            put("dueDate", h.dueDate.toString()); put("text", h.text); put("createdAt", h.createdAt.toString()); put("completed", h.completed); put("important", h.important)
         }) }
         root.put("homeworks", homeworkJson)
 
@@ -1055,7 +1056,7 @@ class AppRepository(private val context: Context) {
                     id = o.getString("id"), lessonId = o.getString("lessonId"), subject = o.getString("subject"),
                     assignedDate = LocalDate.parse(o.getString("assignedDate")), dueDate = LocalDate.parse(o.getString("dueDate")),
                     text = o.optString("text"), createdAt = LocalDateTime.parse(o.optString("createdAt", LocalDateTime.now().toString())),
-                    completed = o.optBoolean("completed", false)
+                    completed = o.optBoolean("completed", false), important = o.optBoolean("important", false)
                 )
             }.toMutableList()
         }
