@@ -336,6 +336,7 @@ class AppRepository(private val context: Context) {
             .asSequence()
             .filter { equivalent(it.subject, lesson.subject) }
             .map { it.date }
+            .filter { it.isAfter(lesson.date) }
             .toSet()
     }
 
