@@ -70,7 +70,9 @@ jobs:
           print('name='+name)
           PY
           SDK="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
-          "$SDK/aapt" dump badging app/build/outputs/apk/release/app-release.apk | grep -F "versionCode='${{ steps.version.outputs.code }}' versionName='${{ steps.version.outputs.name }}'"
+          expected_code="$(sed -n 's/^code=//p' "$GITHUB_OUTPUT")"
+          expected_name="$(sed -n 's/^name=//p' "$GITHUB_OUTPUT")"
+          "$SDK/aapt" dump badging app/build/outputs/apk/release/app-release.apk | grep -F "versionCode='$expected_code' versionName='$expected_name'"
           "$SDK/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
 
       - name: Upload signed APK as private workflow artifact
