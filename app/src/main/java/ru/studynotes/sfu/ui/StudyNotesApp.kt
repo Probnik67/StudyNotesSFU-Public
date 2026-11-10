@@ -882,6 +882,7 @@ private fun LessonActionCard(
     val noHomework = repository.hasNoHomework(lesson.id)
     val lessonMemo = repository.lessonNote(lesson.id)
     var showHomeworkDialog by remember(lesson.id) { mutableStateOf(false) }
+    var lessonExpanded by remember(lesson.id) { mutableStateOf(false) }
     var showNoteDialog by remember(lesson.id) { mutableStateOf(false) }
     val officialChanged = showOfficialChanges && repository.isOfficiallyChanged(repository.selectedSubgroup, lesson)
     val officialAdded = showOfficialChanges && repository.wasOfficiallyAdded(repository.selectedSubgroup, lesson)
@@ -891,7 +892,7 @@ private fun LessonActionCard(
     val officialChangeGreen = Color(0xFF2E7D32)
 
     Card(
-        Modifier.fillMaxWidth(),
+        Modifier.fillMaxWidth().clickable { lessonExpanded = !lessonExpanded },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -1001,6 +1002,10 @@ private fun LessonActionCard(
                 else -> Text("Действия с конспектом станут доступны после окончания пары", fontSize = 12.sp)
             }
 
+            if (lessonExpanded) {
+                Text("Дисциплина: ${lesson.subject} · ${lesson.date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru")))}", fontSize = 12.sp)
+                Button(onClick = { showHomeworkDialog = true }, modifier = Modifier.fillMaxWidth()) { Text("Добавить домашнее задание") }
+            }
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { showHomeworkDialog = true }, Modifier.weight(1f).heightIn(min = 56.dp)) {
@@ -1498,10 +1503,12 @@ private fun HomeworkScreen(
 ) {
     refreshKey.hashCode()
     var editingHomework by remember { mutableStateOf<Homework?>(null) }
+    var addingHomework by remember { mutableStateOf(false) }
     val today = LocalDate.now()
     val sorted = repository.homeworks.sortedWith(compareBy<Homework> { it.completed }.thenByDescending { it.important }.thenBy { it.dueDate }.thenBy { it.createdAt })
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Домашнее задание", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Назад") } }) }
+        topBar = { TopAppBar(title = { Text("Домашнее задание", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Назад") } }, actions = { IconButton(onClick = { addingHomework = true }) { Icon(Icons.Default.Add, "Добавить ДЗ") } }) },
+        floatingActionButton = { FloatingActionButton(onClick = { addingHomework = true }) { Icon(Icons.Default.Add, "Добавить ДЗ") } }
     ) { pad ->
         LazyColumn(state = listState, modifier = Modifier.padding(pad).fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (sorted.isEmpty()) item { Text("Домашних заданий пока нет.") }
@@ -1529,11 +1536,97 @@ private fun HomeworkScreen(
             }
         }
     }
+    if (addingHomework) HomeworkCreateDialog(repository, { addingHomework = false }, { addingHomework = false; onRefresh() })
     editingHomework?.let { homework ->
         HomeworkEditDialog(repository, homework, { editingHomework = null }) { text, dueDate -> repository.updateHomework(homework.id, text, dueDate); editingHomework = null; onRefresh() }
     }
 }
 
+
+@Composable
+private fun HomeworkCreateDialog(
+    repository: AppRepository,
+    onDismiss: () -> Unit,
+    onSaved: () -> Unit
+) {
+    val subjects = repository.subjectTeacherOptions(repository.selectedSubgroup)
+        .map { it.first }.distinct().sorted()
+    var subject by remember { mutableStateOf(subjects.firstOrNull().orEmpty()) }
+    var expanded by remember { mutableStateOf(false) }
+    var assignedDate by remember { mutableStateOf(LocalDate.now()) }
+    var dueDate by remember { mutableStateOf(LocalDate.now().plusDays(7)) }
+    var text by remember { mutableStateOf("") }
+    var important by remember { mutableStateOf(false) }
+    var calendarMode by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val fmt = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru"))
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Новое домашнее задание") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Дисциплина")
+                Box {
+                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(subject.ifBlank { "Выбрать дисциплину" })
+                        Spacer(Modifier.weight(1f))
+                        Icon(Icons.Default.ArrowDropDown, null)
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        subjects.forEach { option ->
+                            DropdownMenuItem(text = { Text(option) }, onClick = { subject = option; expanded = false })
+                        }
+                    }
+                }
+                NativeMultilineEditor(value = text, onValueChange = { text = it; error = null }, hint = "Что нужно сделать…", minHeight = 120)
+                OutlinedButton(onClick = { calendarMode = "assigned" }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Задано: ${assignedDate.format(fmt)}")
+                }
+                OutlinedButton(onClick = { calendarMode = "due" }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Сдать до: ${dueDate.format(fmt)}")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = important, onCheckedChange = { important = it })
+                    Text("★ Важное задание")
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                when {
+                    subject.isBlank() -> error = "Выбери дисциплину из расписания."
+                    text.isBlank() -> error = "Запиши домашнее задание."
+                    dueDate.isBefore(assignedDate) -> error = "Срок сдачи не может быть раньше даты выдачи."
+                    else -> {
+                        repository.addHomeworkForSubject(subject, assignedDate, dueDate, text, important)
+                        onSaved()
+                    }
+                }
+            }) { Text("Сохранить") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
+    )
+    if (calendarMode != null) {
+        val isAssigned = calendarMode == "assigned"
+        val chosen = if (isAssigned) assignedDate else dueDate
+        MiniCalendarDialog(
+            initialMonth = YearMonth.from(chosen),
+            minDate = if (isAssigned) LocalDate.of(2020, 1, 1) else assignedDate,
+            selectedDate = chosen,
+            highlightedDates = emptySet(),
+            onDismiss = { calendarMode = null },
+            onSelect = { selected ->
+                if (isAssigned) {
+                    assignedDate = selected
+                    if (dueDate.isBefore(selected)) dueDate = selected
+                } else dueDate = selected
+                calendarMode = null
+            }
+        )
+    }
+}
 
 @Composable
 private fun HomeworkEditDialog(

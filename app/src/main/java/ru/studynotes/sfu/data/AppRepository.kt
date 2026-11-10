@@ -531,6 +531,23 @@ class AppRepository(private val context: Context) {
         return homework
     }
 
+    fun addHomeworkForSubject(subject: String, assignedDate: LocalDate, dueDate: LocalDate, text: String, important: Boolean = false): Homework {
+        require(subject.isNotBlank() && text.isNotBlank() && !dueDate.isBefore(assignedDate))
+        val matchingLesson = scheduleForSubgroup(selectedSubgroup)
+            .firstOrNull { it.subject.trim().equals(subject.trim(), ignoreCase = true) && it.date == assignedDate }
+        val homework = Homework(
+            lessonId = matchingLesson?.id ?: "",
+            subject = subject.trim(),
+            assignedDate = assignedDate,
+            dueDate = dueDate,
+            text = text.trim(),
+            important = important
+        )
+        homeworks.add(homework)
+        save()
+        return homework
+    }
+
     fun updateHomework(id: String, text: String, dueDate: LocalDate, important: Boolean? = null) {
         val index = homeworks.indexOfFirst { it.id == id }
         if (index >= 0) {
