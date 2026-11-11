@@ -283,7 +283,7 @@ fun StudyNotesApp(repository: AppRepository, initiallyOpenLessonId: String?) {
     LaunchedEffect("schedule-recovery-v0826", repository.selectedSubgroup) {
         repeat(3) { attempt ->
             val result = runCatching {
-                withContext(Dispatchers.IO) { SfuScheduleClient().fetch(context, repository.selectedGroupName) }
+                withContext(Dispatchers.IO) { SfuScheduleClient().fetch(context, repository.selectedGroupName).also { require(it.lessons.isNotEmpty()) { "Сайт СФУ вернул пустое расписание для ${repository.selectedGroupName}" } } }
             }
             val loaded = result.getOrNull()
             if (loaded != null && loaded.lessons.isNotEmpty()) {
@@ -300,7 +300,7 @@ fun StudyNotesApp(repository: AppRepository, initiallyOpenLessonId: String?) {
     LaunchedEffect("live-schedule-refresh-v0829", repository.selectedSubgroup) {
         while (true) {
             val result = runCatching {
-                withContext(Dispatchers.IO) { SfuScheduleClient().fetch(context, repository.selectedGroupName) }
+                withContext(Dispatchers.IO) { SfuScheduleClient().fetch(context, repository.selectedGroupName).also { require(it.lessons.isNotEmpty()) { "Сайт СФУ вернул пустое расписание для ${repository.selectedGroupName}" } } }
             }
             val loaded = result.getOrNull()
             if (loaded != null && loaded.lessons.isNotEmpty()) {
@@ -2849,7 +2849,7 @@ private fun SettingsScreen(repository: AppRepository, onRefresh: () -> Unit, onB
         subgroupMessage = "Загружаю расписание ${subgroup}-й подгруппы…"
         scope.launch {
             val result = runCatching {
-                withContext(Dispatchers.IO) { SfuScheduleClient().fetch(context, repository.selectedGroupName) }
+                withContext(Dispatchers.IO) { SfuScheduleClient().fetch(context, repository.selectedGroupName).also { require(it.lessons.isNotEmpty()) { "Сайт СФУ вернул пустое расписание для ${repository.selectedGroupName}" } } }
             }
             result.onSuccess {
                 repository.replaceSchedule(it.lessons, it.currentWeek, subgroup)
@@ -2869,7 +2869,7 @@ private fun SettingsScreen(repository: AppRepository, onRefresh: () -> Unit, onB
         subgroupSyncing = true
         subgroupMessage = "Загружаю расписание ${subgroup}-й подгруппы…"
         scope.launch {
-            val result = runCatching { withContext(Dispatchers.IO) { SfuScheduleClient().fetch(context, repository.selectedGroupName) } }
+            val result = runCatching { withContext(Dispatchers.IO) { SfuScheduleClient().fetch(context, repository.selectedGroupName).also { require(it.lessons.isNotEmpty()) { "Сайт СФУ вернул пустое расписание для ${repository.selectedGroupName}" } } } }
             result.onSuccess {
                 repository.replaceSchedule(it.lessons, it.currentWeek, subgroup)
                 LessonNotificationWorker.schedule(context, it.lessons)
