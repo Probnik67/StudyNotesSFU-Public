@@ -1516,7 +1516,7 @@ private fun HomeworkScreen(
     var editingHomework by remember { mutableStateOf<Homework?>(null) }
     var addingHomework by remember { mutableStateOf(false) }
     val today = LocalDate.now()
-    val sorted = repository.homeworks.sortedWith(compareBy<Homework> { it.completed }.thenByDescending { it.important }.thenBy { it.dueDate }.thenBy { it.createdAt })
+    val sorted = repository.homeworks.sortedWith(compareBy<Homework> { it.completed }.thenBy { it.dueDate }.thenByDescending { it.important }.thenBy { it.createdAt })
     Scaffold(
         topBar = { TopAppBar(title = { Text("Домашнее задание", fontWeight = FontWeight.Bold) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Назад") } }, actions = { IconButton(onClick = { addingHomework = true }) { Icon(Icons.Default.Add, "Добавить ДЗ") } }) },
         floatingActionButton = { FloatingActionButton(onClick = { addingHomework = true }) { Icon(Icons.Default.Add, "Добавить ДЗ") } }
