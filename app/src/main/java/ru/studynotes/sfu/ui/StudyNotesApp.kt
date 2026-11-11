@@ -1626,7 +1626,7 @@ private fun HomeworkCreateDialog(
             initialMonth = YearMonth.from(chosen),
             minDate = if (isAssigned) LocalDate.of(2020, 1, 1) else assignedDate,
             selectedDate = chosen,
-            highlightedDates = emptySet(),
+            highlightedDates = repository.lessonDatesForSubject(subject),
             onDismiss = { calendarMode = null },
             onSelect = { selected ->
                 if (isAssigned) {
