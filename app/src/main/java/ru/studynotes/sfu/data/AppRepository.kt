@@ -93,7 +93,7 @@ class AppRepository(private val context: Context) {
         get() = (openAiInitialBalanceUsd + openAiTotalTopUpsUsd + openAiBalanceCorrectionUsd - localOpenAiCostUsd).coerceAtLeast(0.0)
 
     val selectedGroupName: String
-        get() = "ИТ00-00БЭК (${selectedSubgroup} подгруппа)"
+        get() = "ИТ26-09БЭК (${selectedSubgroup} подгруппа)"
 
     init { load() }
 
