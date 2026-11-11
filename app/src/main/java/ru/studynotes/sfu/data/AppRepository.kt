@@ -309,35 +309,23 @@ class AppRepository(private val context: Context) {
     fun noNoteLessonsForSubgroup(subgroup: Int): List<Lesson> =
         scheduleForSubgroup(subgroup).filter { it.id in noNotesLessonIds }
 
-    fun futureLessonDatesForSubject(lesson: Lesson): Set<LocalDate> {
-        val subgroup = subgroupForLessonId(lesson.id) ?: selectedSubgroup
-
-        fun norm(value: String): String = value.lowercase()
+    fun lessonDatesForSubject(subject: String, subgroup: Int = selectedSubgroup): Set<LocalDate> {
+        fun normalize(value: String): String = value.lowercase()
             .replace('ё', 'е')
             .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
             .trim()
-
-        fun equivalent(a: String, b: String): Boolean {
-            val x = norm(a)
-            val y = norm(b)
-            if (x.isBlank() || y.isBlank()) return false
-            if (x == y || x.contains(y) || y.contains(x)) return true
-            val xt = x.split(' ').filter { it.length >= 4 }.toSet()
-            val yt = y.split(' ').filter { it.length >= 4 }.toSet()
-            if (xt.isEmpty() || yt.isEmpty()) return false
-            val common = xt.intersect(yt).size.toDouble()
-            return common / minOf(xt.size, yt.size) >= 0.6
-        }
-
-        // Календарь ДЗ использует только занятия, которые уже присутствуют в
-        // актуально загруженном расписании СФУ, плюс локальные ручные правки.
-        // Никаких вычислений повторяемости, чётности или продолжения серий дат.
+        val requested = normalize(subject)
+        if (requested.isBlank()) return emptySet()
         return scheduleForSubgroup(subgroup)
             .asSequence()
-            .filter { equivalent(it.subject, lesson.subject) }
+            .filter { normalize(it.subject) == requested }
             .map { it.date }
-            .filter { it.isAfter(lesson.date) }
             .toSet()
+    }
+
+    fun futureLessonDatesForSubject(lesson: Lesson): Set<LocalDate> {
+        val subgroup = subgroupForLessonId(lesson.id) ?: selectedSubgroup
+        return lessonDatesForSubject(lesson.subject, subgroup)
     }
 
     private fun officialContentSignature(lesson: Lesson): String = listOf(
