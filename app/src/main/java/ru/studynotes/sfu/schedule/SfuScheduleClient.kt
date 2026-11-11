@@ -35,7 +35,7 @@ class SfuScheduleClient {
         val diagnostics: String
     )
 
-    private val defaultGroup = "ИТ00-00БЭК (1 подгруппа)"
+    private val defaultGroup = "ИТ26-09БЭК (1 подгруппа)"
     private val httpsApiBase = "https://edu.sfu-kras.ru/api/timetable/get&target="
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
