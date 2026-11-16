@@ -419,8 +419,23 @@ class AppRepository(private val context: Context) {
     }
 
     fun replaceSchedule(newLessons: List<Lesson>, week: WeekKind, subgroup: Int = selectedSubgroup) {
-        recordOfficialScheduleChanges(newLessons, subgroup)
-        val originals = newLessons.toMutableList()
+        // A finished Monday-Sunday week becomes immutable local history.
+        // The SFU API only returns a rolling window: never erase weeks that
+        // have fallen outside that window, including across app restarts.
+        val currentMonday = LocalDate.now()
+            .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+        val archivedOriginals = originalSchedulesBySubgroup[subgroup].orEmpty()
+            .filter { it.date.isBefore(currentMonday) }
+        val archivedEffective = schedulesBySubgroup[subgroup].orEmpty()
+            .filter { it.date.isBefore(currentMonday) }
+        // Keep the newest successfully downloaded snapshot for current/future weeks.
+        // Old weeks are sourced exclusively from locally persisted history.
+        val liveOriginals = newLessons.filter { !it.date.isBefore(currentMonday) }
+        val originals = (archivedOriginals + liveOriginals)
+            .distinctBy(::slotKey)
+            .sortedWith(compareBy<Lesson> { it.date }.thenBy { it.start })
+            .toMutableList()
+        recordOfficialScheduleChanges(originals, subgroup)
         originalSchedulesBySubgroup[subgroup] = originals
         val overrides = lessonOverridesBySubgroup[subgroup].orEmpty()
         val effective = originals.map { original ->
@@ -434,6 +449,10 @@ class AppRepository(private val context: Context) {
                 week = original.week
             ) else original
         }.toMutableList()
+        // Preserve the exact last effective state of completed weeks, including
+        // user overrides, instead of rebuilding them from the SFU feed.
+        effective.removeAll { it.date.isBefore(currentMonday) }
+        effective.addAll(archivedEffective)
         manualLessonsBySubgroup[subgroup].orEmpty().forEach { (key, manual) ->
             if (effective.none { slotKey(it) == key }) effective.add(manual)
         }
