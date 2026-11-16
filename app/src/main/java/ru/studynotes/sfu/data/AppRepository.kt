@@ -424,14 +424,25 @@ class AppRepository(private val context: Context) {
         // have fallen outside that window, including across app restarts.
         val currentMonday = LocalDate.now()
             .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-        val archivedOriginals = originalSchedulesBySubgroup[subgroup].orEmpty()
+        val archivedOriginals = (originalSchedulesBySubgroup[subgroup].orEmpty() +
+            schedulesBySubgroup[subgroup].orEmpty())
             .filter { it.date.isBefore(currentMonday) }
+            .distinctBy(::slotKey)
         val archivedEffective = schedulesBySubgroup[subgroup].orEmpty()
             .filter { it.date.isBefore(currentMonday) }
         // Keep the newest successfully downloaded snapshot for current/future weeks.
         // Old weeks are sourced exclusively from locally persisted history.
         val liveOriginals = newLessons.filter { !it.date.isBefore(currentMonday) }
-        val originals = (archivedOriginals + liveOriginals)
+        // If a past week has never been stored locally, recover it once from
+        // the SFU rolling response; never replace an already archived week.
+        val archivedWeeks = archivedOriginals.map {
+            it.date.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+        }.toSet()
+        val recoveredWeeks = newLessons.filter { lesson ->
+            lesson.date.isBefore(currentMonday) &&
+                lesson.date.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY)) !in archivedWeeks
+        }
+        val originals = (archivedOriginals + recoveredWeeks + liveOriginals)
             .distinctBy(::slotKey)
             .sortedWith(compareBy<Lesson> { it.date }.thenBy { it.start })
             .toMutableList()
@@ -453,6 +464,10 @@ class AppRepository(private val context: Context) {
         // user overrides, instead of rebuilding them from the SFU feed.
         effective.removeAll { it.date.isBefore(currentMonday) }
         effective.addAll(archivedEffective)
+        // Recovered historical weeks are also visible in the calendar.
+        recoveredWeeks.forEach { lesson ->
+            if (effective.none { slotKey(it) == slotKey(lesson) }) effective.add(lesson)
+        }
         manualLessonsBySubgroup[subgroup].orEmpty().forEach { (key, manual) ->
             if (effective.none { slotKey(it) == key }) effective.add(manual)
         }
